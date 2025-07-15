@@ -1,0 +1,36 @@
+#!/bin/sh
+#
+# qfx-convert - CLI wrapper for QFX converter utility
+# Converts Nordstrom QFX files to Chase format for Quicken import
+#
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(dirname "$0")"
+
+# Path to the Python converter script
+CONVERTER_SCRIPT="$SCRIPT_DIR/qfx_converter.py"
+
+# Check if the Python script exists
+if [ ! -f "$CONVERTER_SCRIPT" ]; then
+    echo "Error: qfx_converter.py not found at $CONVERTER_SCRIPT" >&2
+    exit 1
+fi
+
+# Check if Python 3 is available
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON_CMD="python3"
+elif command -v python >/dev/null 2>&1; then
+    # Check if it's Python 3
+    if python -c "import sys; exit(0 if sys.version_info[0] == 3 else 1)" 2>/dev/null; then
+        PYTHON_CMD="python"
+    else
+        echo "Error: Python 3 is required but not found" >&2
+        exit 1
+    fi
+else
+    echo "Error: Python is not installed or not in PATH" >&2
+    exit 1
+fi
+
+# Execute the Python converter with all passed arguments
+exec "$PYTHON_CMD" "$CONVERTER_SCRIPT" "$@"
