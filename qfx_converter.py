@@ -108,9 +108,9 @@ def convert_qfx(input_content):
     # Make a copy to work with
     converted = input_content
     
-    # Rule 2: Change FID and INTU.BID from 12139 to 10898 (Chase Bank)
-    converted = re.sub(r'<FID>12139</FID>', '<FID>10898</FID>', converted)
-    converted = re.sub(r'<INTU\.BID>12139</INTU\.BID>', '<INTU.BID>10898</INTU.BID>', converted)
+    # Rule 2: Change FID and INTU.BID to 10898 (Chase Bank)
+    converted = re.sub(r'<FID>\d+</FID>', '<FID>10898</FID>', converted)
+    converted = re.sub(r'<INTU\.BID>\d+</INTU\.BID>', '<INTU.BID>10898</INTU.BID>', converted)
     
     # Rule 3: Reverse the sign of each transaction amount
     def reverse_amount(match):
