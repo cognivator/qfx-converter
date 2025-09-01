@@ -21,7 +21,7 @@ INSTALL_DIR="/usr/local/bin"
 
 # Files to install
 PYTHON_SCRIPT="$SCRIPT_DIR/qfx-convert-lib.py"
-SHELL_SCRIPT="$SCRIPT_DIR/qfx-convert-cli"
+SHELL_SCRIPT="$SCRIPT_DIR/qfx-convert"
 VERIFY_SCRIPT="$SCRIPT_DIR/qfx-convert-verify.py"
 
 echo "QFX Converter Setup"
@@ -34,7 +34,7 @@ if [ ! -f "$PYTHON_SCRIPT" ]; then
 fi
 
 if [ ! -f "$SHELL_SCRIPT" ]; then
-    echo "${RED}Error: qfx-convert-cli not found at $SHELL_SCRIPT${NC}" >&2
+    echo "${RED}Error: qfx-convert not found at $SHELL_SCRIPT${NC}" >&2
     exit 1
 fi
 
