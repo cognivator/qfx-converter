@@ -112,13 +112,6 @@ def convert_qfx(input_content):
     converted = re.sub(r'<FID>\d+</FID>', '<FID>10898</FID>', converted)
     converted = re.sub(r'<INTU\.BID>\d+</INTU\.BID>', '<INTU.BID>10898</INTU.BID>', converted)
     
-    # Rule 3: Reverse the sign of each transaction amount
-    def reverse_amount(match):
-        amount = float(match.group(1))
-        reversed_amount = -amount
-        return f'<TRNAMT>{reversed_amount}</TRNAMT>'
-    
-    converted = re.sub(r'<TRNAMT>([^<]+)</TRNAMT>', reverse_amount, converted)
     
     return converted
 
