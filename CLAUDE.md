@@ -5,16 +5,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 QFX Converter is a CLI utility that converts Nordstrom QFX transaction files to Chase format for Quicken import. The conversion applies specific transformations:
-- Changes FID from 12139 (Nordstrom) to 10898 (Chase Bank)
-- Changes INTU.BID from 12139 to 10898
-- Reverses the sign of all transaction amounts
+- Changes FID from anything (Nordstrom is 12139) to 10898 (Chase Bank)
+- Changes INTU.BID from anything (varies) to 10898
+- Peserves the transaction amounts
 - Preserves FITID tags and transaction descriptions
 
 ## Architecture
 
 The project consists of three main components:
 
-1. **qfx_converter.py** - Core Python module containing:
+1. **qfx-convert-lib.py** - Core Python module containing:
    - `convert_qfx()` - Main conversion logic using regex transformations
    - `extract_date_range()` - Extracts DTSTART/DTEND from QFX files
    - `extract_latest_year()` - Determines output year from transaction dates
@@ -25,7 +25,7 @@ The project consists of three main components:
    - Locates the Python converter script
    - Passes through all command-line arguments
 
-3. **verify_conversion.py** - Standalone verification utility for manual checking
+3. **qfx-convert-verify.py** - Standalone verification utility for manual checking
 
 ## Common Commands
 
@@ -35,7 +35,7 @@ The project consists of three main components:
 ./qfx-convert test/transactions.qfx
 
 # Manual verification
-./verify_conversion.py original.qfx converted.QFX
+./qfx-convert-verify.py original.qfx converted.QFX
 
 # Install system-wide
 ./setup.sh
@@ -68,11 +68,10 @@ qfx-convert --no-verify file.qfx
 
 1. Parse command-line arguments with argparse
 2. Extract date range from QFX DTSTART/DTEND tags
-3. Apply FID/INTU.BID substitutions (12139 → 10898)
-4. Reverse transaction amount signs using regex replacement
-5. Generate output filename from date range
-6. Write converted file to year-based directory
-7. Automatically verify conversion success (unless --no-verify)
+3. Apply FID/INTU.BID substitutions (* → 10898)
+4. Generate output filename from date range
+5. Write converted file to year-based directory
+6. Automatically verify conversion success (unless --no-verify)
 
 ## Development Notes
 
