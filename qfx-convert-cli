@@ -8,11 +8,16 @@
 SCRIPT_DIR="$(dirname "$0")"
 
 # Path to the Python converter script
-CONVERTER_SCRIPT="$SCRIPT_DIR/qfx_converter.py"
+CONVERTER_SCRIPT="$SCRIPT_DIR/qfx-convert-lib.py"
+
+# If running from installed location, look for the script in the same directory
+if [ ! -f "$CONVERTER_SCRIPT" ] && [ -f "$(dirname "$0")/qfx-convert-lib.py" ]; then
+    CONVERTER_SCRIPT="$(dirname "$0")/qfx-convert-lib.py"
+fi
 
 # Check if the Python script exists
 if [ ! -f "$CONVERTER_SCRIPT" ]; then
-    echo "Error: qfx_converter.py not found at $CONVERTER_SCRIPT" >&2
+    echo "Error: qfx-convert-lib.py not found at $CONVERTER_SCRIPT" >&2
     exit 1
 fi
 

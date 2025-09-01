@@ -20,26 +20,26 @@ SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"  # Get absolute path
 INSTALL_DIR="/usr/local/bin"
 
 # Files to install
-PYTHON_SCRIPT="$SCRIPT_DIR/qfx_converter.py"
-SHELL_SCRIPT="$SCRIPT_DIR/qfx-convert"
-VERIFY_SCRIPT="$SCRIPT_DIR/verify_conversion.py"
+PYTHON_SCRIPT="$SCRIPT_DIR/qfx-convert-lib.py"
+SHELL_SCRIPT="$SCRIPT_DIR/qfx-convert-cli"
+VERIFY_SCRIPT="$SCRIPT_DIR/qfx-convert-verify.py"
 
 echo "QFX Converter Setup"
 echo "==================="
 
 # Check if files exist
 if [ ! -f "$PYTHON_SCRIPT" ]; then
-    echo "${RED}Error: qfx_converter.py not found at $PYTHON_SCRIPT${NC}" >&2
+    echo "${RED}Error: qfx-convert-lib.py not found at $PYTHON_SCRIPT${NC}" >&2
     exit 1
 fi
 
 if [ ! -f "$SHELL_SCRIPT" ]; then
-    echo "${RED}Error: qfx-convert not found at $SHELL_SCRIPT${NC}" >&2
+    echo "${RED}Error: qfx-convert-cli not found at $SHELL_SCRIPT${NC}" >&2
     exit 1
 fi
 
 if [ ! -f "$VERIFY_SCRIPT" ]; then
-    echo "${RED}Error: verify_conversion.py not found at $VERIFY_SCRIPT${NC}" >&2
+    echo "${RED}Error: qfx-convert-verify.py not found at $VERIFY_SCRIPT${NC}" >&2
     exit 1
 fi
 
@@ -63,19 +63,19 @@ echo "Install directory: $INSTALL_DIR"
 echo
 
 # Copy the Python script
-echo "Installing qfx_converter.py..."
+echo "Installing qfx-convert-lib.py..."
 $SUDO_CMD cp "$PYTHON_SCRIPT" "$INSTALL_DIR/"
-$SUDO_CMD chmod 755 "$INSTALL_DIR/qfx_converter.py"
+$SUDO_CMD chmod 755 "$INSTALL_DIR/qfx-convert-lib.py"
 
 # Copy the shell script
 echo "Installing qfx-convert..."
-$SUDO_CMD cp "$SHELL_SCRIPT" "$INSTALL_DIR/"
+$SUDO_CMD cp "$SHELL_SCRIPT" "$INSTALL_DIR/qfx-convert"
 $SUDO_CMD chmod 755 "$INSTALL_DIR/qfx-convert"
 
 # Copy the verification script
-echo "Installing verify_conversion.py..."
-$SUDO_CMD cp "$VERIFY_SCRIPT" "$INSTALL_DIR/"
-$SUDO_CMD chmod 755 "$INSTALL_DIR/verify_conversion.py"
+echo "Installing qfx-convert-verify..."
+$SUDO_CMD cp "$VERIFY_SCRIPT" "$INSTALL_DIR/qfx-convert-verify"
+$SUDO_CMD chmod 755 "$INSTALL_DIR/qfx-convert-verify"
 
 echo "${GREEN}Installation completed successfully!${NC}"
 echo
@@ -86,4 +86,4 @@ echo "  qfx-convert /path/to/file.qfx        # Convert specific file"
 echo "  qfx-convert --help                   # Show help"
 echo
 echo "To uninstall, run:"
-echo "  sudo rm $INSTALL_DIR/qfx_converter.py $INSTALL_DIR/qfx-convert $INSTALL_DIR/verify_conversion.py"
+echo "  sudo rm $INSTALL_DIR/qfx-convert-lib.py $INSTALL_DIR/qfx-convert $INSTALL_DIR/qfx-convert-verify"
