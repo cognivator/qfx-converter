@@ -70,32 +70,32 @@ def verify_conversion(original_content, converted_content, show_details=True):
     conv_elements = extract_key_elements(converted_content)
     
     # Check each conversion requirement
-    fid_changed = orig_elements['FID'] != conv_elements['FID']
-    intu_changed = orig_elements['INTU.BID'] != conv_elements['INTU.BID']
+    fid_changed = conv_elements['FID'] == '10898'
+    intu_changed = conv_elements['INTU.BID'] == '10898'
     count_same = orig_elements['transaction_count'] == conv_elements['transaction_count']
     
-    # Check if signs are reversed
-    signs_reversed = True
+    # Check if amounts are preserved (not reversed)
+    amounts_preserved = True
     if orig_elements['amounts'] and conv_elements['amounts']:
         for orig, conv in zip(orig_elements['amounts'], conv_elements['amounts']):
-            if abs(orig + conv) > 0.01:  # Allow for small floating point differences
-                signs_reversed = False
+            if abs(orig - conv) > 0.01:  # Allow for small floating point differences
+                amounts_preserved = False
                 break
     
-    success = fid_changed and intu_changed and count_same and signs_reversed
+    success = fid_changed and intu_changed and count_same and amounts_preserved
     
     if show_details:
         print("\n" + "="*50)
         print("CONVERSION VERIFICATION RESULTS")
         print("="*50)
-        print(f"FID Changed:         {'✓' if fid_changed else '✗'} ({orig_elements['FID']} → {conv_elements['FID']})")
-        print(f"INTU.BID Changed:    {'✓' if intu_changed else '✗'} ({orig_elements['INTU.BID']} → {conv_elements['INTU.BID']})")
+        print(f"FID Set to 10898:    {'✓' if fid_changed else '✗'} ({orig_elements['FID']} → {conv_elements['FID']})")
+        print(f"INTU.BID Set to 10898: {'✓' if intu_changed else '✗'} ({orig_elements['INTU.BID']} → {conv_elements['INTU.BID']})")
         print(f"Transaction Count:   {'✓' if count_same else '✗'} ({orig_elements['transaction_count']} transactions)")
-        print(f"Amount Signs Flipped: {'✓' if signs_reversed else '✗'}")
+        print(f"Amounts Preserved:   {'✓' if amounts_preserved else '✗'}")
         print(f"\nOverall Status:      {'✓ SUCCESS' if success else '✗ FAILED'}")
         
         if orig_elements['amounts']:
-            print(f"\nSample Amount Changes (first 3):")
+            print(f"\nSample Amounts (first 3):")
             for i, (orig, conv) in enumerate(zip(orig_elements['amounts'][:3], conv_elements['amounts'][:3])):
                 print(f"  {orig:>8.2f} → {conv:>8.2f}")
         print("="*50)
@@ -108,17 +108,10 @@ def convert_qfx(input_content):
     # Make a copy to work with
     converted = input_content
     
-    # Rule 2: Change FID and INTU.BID from 12139 to 10898 (Chase Bank)
-    converted = re.sub(r'<FID>12139</FID>', '<FID>10898</FID>', converted)
-    converted = re.sub(r'<INTU\.BID>12139</INTU\.BID>', '<INTU.BID>10898</INTU.BID>', converted)
+    # Rule 2: Change FID and INTU.BID to 10898 (Chase Bank)
+    converted = re.sub(r'<FID>\d+</FID>', '<FID>10898</FID>', converted)
+    converted = re.sub(r'<INTU\.BID>\d+</INTU\.BID>', '<INTU.BID>10898</INTU.BID>', converted)
     
-    # Rule 3: Reverse the sign of each transaction amount
-    def reverse_amount(match):
-        amount = float(match.group(1))
-        reversed_amount = -amount
-        return f'<TRNAMT>{reversed_amount}</TRNAMT>'
-    
-    converted = re.sub(r'<TRNAMT>([^<]+)</TRNAMT>', reverse_amount, converted)
     
     return converted
 
