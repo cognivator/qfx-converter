@@ -6,9 +6,9 @@ A CLI utility that converts Nordstrom QFX transaction files to Chase format for 
 
 This utility applies the following transformations to Nordstrom QFX files:
 
-1. Changes FID from 12139 (Nordstrom) to 10898 (Chase Bank)
-2. Changes INTU.BID from 12139 to 10898
-3. Reverses the sign of all transaction amounts
+1. Changes FID from anything (Nordstrom is 12139) to 10898 (Chase Bank)
+2. Changes INTU.BID from anything to 10898
+3. Preserves the transaction amounts
 4. Maintains all existing FITID tags (no changes needed)
 5. Maintains all transaction descriptions (no changes needed)
 
@@ -113,12 +113,12 @@ verify_conversion.py original.qfx converted.QFX
 
 ```
 ~/DEV/qfx-converter/
-├── qfx_converter.py       # Main Python conversion logic
-├── qfx-convert            # Shell script wrapper
-├── verify_conversion.py   # Standalone verification script
-├── setup.sh              # Installation script
-├── README.md             # This documentation
-└── test/                 # Test directory (created during development)
+├── qfx-convert             # Shell script wrapper
+├── qfx-convert-lib.py      # Main Python conversion logic
+├── qfx-convert-verify.py   # Standalone verification script
+├── setup.sh                # Installation script
+├── README.md               # This documentation
+└── test/                   # Test directory (created during development)
 ```
 
 ## Requirements
@@ -140,7 +140,7 @@ After conversion:
 To remove the utility:
 
 ```bash
-sudo rm /usr/local/bin/qfx_converter.py /usr/local/bin/qfx-convert /usr/local/bin/verify_conversion.py
+sudo rm /usr/local/bin/qfx-convert /usr/local/bin/qfx-convert-lib.py /usr/local/bin/qfx-convert-verify.py
 ```
 
 ## Development
