@@ -20,16 +20,16 @@ SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"  # Get absolute path
 INSTALL_DIR="/usr/local/bin"
 
 # Files to install
-PYTHON_SCRIPT="$SCRIPT_DIR/qfx-convert-lib.py"
+PYTHON_SCRIPT="$SCRIPT_DIR/qfx_convert_lib.py"
 SHELL_SCRIPT="$SCRIPT_DIR/qfx-convert"
-VERIFY_SCRIPT="$SCRIPT_DIR/qfx-convert-verify.py"
+VERIFY_SCRIPT="$SCRIPT_DIR/qfx_convert_verify.py"
 
 echo "QFX Converter Setup"
 echo "==================="
 
 # Check if files exist
 if [ ! -f "$PYTHON_SCRIPT" ]; then
-    echo "${RED}Error: qfx-convert-lib.py not found at $PYTHON_SCRIPT${NC}" >&2
+    echo "${RED}Error: qfx_convert_lib.py not found at $PYTHON_SCRIPT${NC}" >&2
     exit 1
 fi
 
@@ -39,7 +39,7 @@ if [ ! -f "$SHELL_SCRIPT" ]; then
 fi
 
 if [ ! -f "$VERIFY_SCRIPT" ]; then
-    echo "${RED}Error: qfx-convert-verify.py not found at $VERIFY_SCRIPT${NC}" >&2
+    echo "${RED}Error: qfx_convert_verify.py not found at $VERIFY_SCRIPT${NC}" >&2
     exit 1
 fi
 
@@ -62,17 +62,20 @@ echo "Source directory: $SCRIPT_DIR"
 echo "Install directory: $INSTALL_DIR"
 echo
 
-# Copy the Python script
-echo "Installing qfx-convert-lib.py..."
-$SUDO_CMD cp "$PYTHON_SCRIPT" "$INSTALL_DIR/"
-$SUDO_CMD chmod 755 "$INSTALL_DIR/qfx-convert-lib.py"
+# Copy the Python library.
+# IMPORTANT: keep the exact filename qfx_convert_lib.py in the install dir so
+# that qfx_convert_verify can `import qfx_convert_lib` from the same directory.
+echo "Installing qfx_convert_lib.py..."
+$SUDO_CMD cp "$PYTHON_SCRIPT" "$INSTALL_DIR/qfx_convert_lib.py"
+$SUDO_CMD chmod 755 "$INSTALL_DIR/qfx_convert_lib.py"
 
 # Copy the shell script
 echo "Installing qfx-convert..."
 $SUDO_CMD cp "$SHELL_SCRIPT" "$INSTALL_DIR/qfx-convert"
 $SUDO_CMD chmod 755 "$INSTALL_DIR/qfx-convert"
 
-# Copy the verification script
+# Copy the verification script (installed as the command 'qfx-convert-verify').
+# It imports qfx_convert_lib, which is installed alongside it in $INSTALL_DIR.
 echo "Installing qfx-convert-verify..."
 $SUDO_CMD cp "$VERIFY_SCRIPT" "$INSTALL_DIR/qfx-convert-verify"
 $SUDO_CMD chmod 755 "$INSTALL_DIR/qfx-convert-verify"
@@ -81,9 +84,10 @@ echo "${GREEN}Installation completed successfully!${NC}"
 echo
 echo "The qfx-convert command is now available system-wide."
 echo "Usage examples:"
-echo "  qfx-convert                          # Convert transactions.qfx in current directory"
+echo "  qfx-convert                          # Convert transactions.qfx (default --fid nord)"
 echo "  qfx-convert /path/to/file.qfx        # Convert specific file"
+echo "  qfx-convert --fid chase file.qfx     # Use Chase id as a fallback"
 echo "  qfx-convert --help                   # Show help"
 echo
 echo "To uninstall, run:"
-echo "  sudo rm $INSTALL_DIR/qfx-convert-lib.py $INSTALL_DIR/qfx-convert $INSTALL_DIR/qfx-convert-verify"
+echo "  sudo rm $INSTALL_DIR/qfx_convert_lib.py $INSTALL_DIR/qfx-convert $INSTALL_DIR/qfx-convert-verify"

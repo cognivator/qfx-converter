@@ -1,23 +1,23 @@
 #!/bin/sh
 #
 # qfx-convert - CLI wrapper for QFX converter utility
-# Converts Nordstrom QFX files to Chase format for Quicken import
+# Adjusts the financial-institution id in a Nordstrom QFX file for Quicken import
 #
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(dirname "$0")"
 
 # Path to the Python converter script
-CONVERTER_SCRIPT="$SCRIPT_DIR/qfx-convert-lib.py"
+CONVERTER_SCRIPT="$SCRIPT_DIR/qfx_convert_lib.py"
 
 # If running from installed location, look for the script in the same directory
-if [ ! -f "$CONVERTER_SCRIPT" ] && [ -f "$(dirname "$0")/qfx-convert-lib.py" ]; then
-    CONVERTER_SCRIPT="$(dirname "$0")/qfx-convert-lib.py"
+if [ ! -f "$CONVERTER_SCRIPT" ] && [ -f "$(dirname "$0")/qfx_convert_lib.py" ]; then
+    CONVERTER_SCRIPT="$(dirname "$0")/qfx_convert_lib.py"
 fi
 
 # Check if the Python script exists
 if [ ! -f "$CONVERTER_SCRIPT" ]; then
-    echo "Error: qfx-convert-lib.py not found at $CONVERTER_SCRIPT" >&2
+    echo "Error: qfx_convert_lib.py not found at $CONVERTER_SCRIPT" >&2
     exit 1
 fi
 
