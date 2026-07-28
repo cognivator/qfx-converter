@@ -156,7 +156,10 @@ qfx-convert-verify --fid chase original.qfx converted.QFX
 ├── qfx_convert_verify.py    # Standalone verifier (imports qfx_convert_lib)
 ├── setup.sh                 # Installation script
 ├── README.md                # This documentation
-└── test/                    # Test directory
+└── test/                    # Test suite (tracked) + fixtures (gitignored)
+    ├── test_qfx_convert.py  # unittest suite (stdlib only)
+    ├── run_tests.sh         # Test runner
+    └── fixtures/            # Pristine sample masters + temp sandbox (gitignored)
 ```
 
 ## Requirements
@@ -191,13 +194,29 @@ The utility is developed in `~/DEV/qfx-converter/` with financial data stored in
 
 ### Testing
 
-Test the utility before installation:
+The project ships an automated test suite (Python stdlib `unittest`, no external
+dependencies). **Prefer running the suite** over ad-hoc manual conversions — it
+covers every CLI parameter for both `qfx-convert` and `qfx-convert-verify`,
+checks each produced file for correctness, and cleans up after itself.
 
 ```bash
 cd ~/DEV/qfx-converter
-./qfx-convert test/transactions.qfx
-./qfx_convert_verify.py test/transactions.qfx 2025/<converted-file>.QFX
+./test/run_tests.sh
 ```
+
+The runner validates the sample fixtures, runs the suite, verifies the fixture
+masters were left byte-for-byte pristine, and removes all temporary test data.
+You can also run the suite directly, optionally targeting a single test:
+
+```bash
+python3 test/test_qfx_convert.py
+python3 test/test_qfx_convert.py TestConvertCLI.test_fid_chase
+```
+
+Test inputs live in `test/fixtures/` and are treated as read-only masters; each
+test operates on a private copy under `test/fixtures/temp/`. The whole
+`test/fixtures/` tree is gitignored, so no financial sample data is ever
+committed.
 
 ## License
 

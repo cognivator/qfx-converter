@@ -5,7 +5,12 @@
 .idea/
 
 #### Project
-test/
+# Ignore ONLY the fixtures tree: it holds real financial samples (masters),
+# per-test working copies, and any test output. The temp sandbox lives at
+# test/fixtures/temp/, so it is covered here too. This guarantees no sample
+# data is ever committed, even if a test run fails to clean up. The rest of
+# test/ (the suite and runner) IS tracked.
+test/fixtures/
 
 #### VSCode
 .history/
