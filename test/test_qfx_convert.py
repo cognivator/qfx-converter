@@ -94,6 +94,16 @@ def get_amounts(text):
 def txn_count(text):
     return len(re.findall(r"<STMTTRN>", text))
 
+def get_ledgerbal(text):
+    """Signed LEDGERBAL amount as a float (independent of the lib's extractor)."""
+    v = _one(r"<LEDGERBAL>\s*<BALAMT>(-?[\d.]+)</BALAMT>", text)
+    return float(v) if v is not None else None
+
+def get_availbal(text):
+    """Signed AVAILBAL amount as a float (independent of the lib's extractor)."""
+    v = _one(r"<AVAILBAL>\s*<BALAMT>(-?[\d.]+)</BALAMT>", text)
+    return float(v) if v is not None else None
+
 
 class _Base(unittest.TestCase):
     """Per-test temp sandbox. Fixtures are copied in; nothing runs in place."""
@@ -405,6 +415,102 @@ class TestWrapperScript(_Base):
         produced = list((self.tmp / "w").glob("*.QFX"))
         self.assertEqual(len(produced), 1, produced)
         self.assertEqual(get_fid(self.read(produced[0])), ID_NORD)
+
+
+# ============================================================================
+# GROUP: institutions
+# ----------------------------------------------------------------------------
+# Per-institution-id DATA transforms that go beyond the FID/INTU.BID rewrite,
+# keyed to --fid via lib.FID_BALANCE_FLIPS. Each id that triggers a transform
+# gets its own sub-group class below; add future ids (e.g. chase) as sibling
+# _InstitutionCase subclasses following the same pattern.
+#
+#   sub-group nord (71411): flips the LEDGERBAL sign (pos<->neg), magnitude
+#       preserved; AVAILBAL and every transaction <TRNAMT> left untouched.
+# ============================================================================
+
+class _InstitutionCase(_Base):
+    """Shared scaffolding for the institutions group.
+
+    Subclasses set INST_FID; convert_fixture() stages a pristine fixture, runs
+    the CLI under that --fid, and returns (before_text, after_text) so sub-group
+    tests can assert on the institution-specific transform.
+    """
+
+    INST_FID = None  # set by each sub-group
+
+    def convert_fixture(self, fixture_name, year):
+        src = self.stage(fixture_name)
+        before = self.read(src)
+        r = self.run_convert("--fid", self.INST_FID, src)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        after = self.read(self.only_output(year))
+        return before, after
+
+
+class TestInstitutionNord(_InstitutionCase):
+    """SUB-GROUP: id 'nord' (71411).
+
+    Expected transform: the online LEDGERBAL sign is flipped (Quicken imports
+    the Nordstrom Web Connect balance with the wrong sign, so pre-flipping
+    compensates); AVAILBAL and transaction amounts are preserved exactly.
+    """
+
+    INST_FID = "nord"
+
+    def test_fid_registered_for_ledgerbal_flip(self):
+        # Independent restatement of the policy this sub-group validates.
+        self.assertIn("LEDGERBAL", lib.FID_BALANCE_FLIPS["nord"])
+        self.assertNotIn("AVAILBAL", lib.FID_BALANCE_FLIPS["nord"])
+
+    def test_ledgerbal_flipped_neg_to_pos(self):
+        # 2025 fixture carries a NEGATIVE ledger balance (-3768.18).
+        before, after = self.convert_fixture(FX_2025, "2025")
+        self.assertLess(get_ledgerbal(before), 0)                       # precondition
+        self.assertAlmostEqual(get_ledgerbal(after), -get_ledgerbal(before), places=2)
+        self.assertGreater(get_ledgerbal(after), 0)                     # now positive
+
+    def test_ledgerbal_flipped_pos_to_neg(self):
+        # 2026 fixture carries a POSITIVE ledger balance (4369.11).
+        before, after = self.convert_fixture(FX_2026, "2026")
+        self.assertGreater(get_ledgerbal(before), 0)                    # precondition
+        self.assertAlmostEqual(get_ledgerbal(after), -get_ledgerbal(before), places=2)
+        self.assertLess(get_ledgerbal(after), 0)                        # now negative
+
+    def test_availbal_not_flipped(self):
+        before, after = self.convert_fixture(FX_2025, "2025")
+        self.assertAlmostEqual(get_availbal(after), get_availbal(before), places=2)
+
+    def test_transaction_amounts_not_flipped(self):
+        # The flip must not bleed into <TRNAMT>, which also holds signed amounts.
+        before, after = self.convert_fixture(FX_2025, "2025")
+        self.assertEqual(get_amounts(after), get_amounts(before))
+
+    def test_verify_reports_ledgerbal_flip(self):
+        # The shared verifier's balance section marks LEDGERBAL as a passing
+        # 'flip' and reports overall SUCCESS for a nord conversion.
+        src = self.stage(FX_2025)
+        r = self.run_convert("--fid", "nord", src)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        conv = self.only_output("2025")
+        v = self.run_verify(src, conv)                  # marker-driven (nord)
+        self.assertEqual(v.returncode, 0, v.stderr)
+        self.assertIn("SUCCESS", v.stdout)
+        self.assertIn("LEDGERBAL", v.stdout)
+        self.assertIn("flip", v.stdout)
+
+    def test_verify_balance_check_is_not_vacuous(self):
+        # Take a correct nord conversion, then revert ONLY the ledger sign so
+        # ids/marker stay valid but the balance is wrong. Verification must fail,
+        # proving the balance rule is enforced independently (not vacuous).
+        before = self.read(FIXTURES / FX_2025)
+        good = lib.convert_qfx(before, fid="nord", write_marker=True)
+        bad = re.sub(r"(<LEDGERBAL>\s*<BALAMT>)(-?)([\d.]+)",
+                     lambda m: m.group(1) + ("" if m.group(2) else "-") + m.group(3),
+                     good)
+        self.assertNotEqual(get_ledgerbal(bad), get_ledgerbal(good))    # sign reverted
+        self.assertFalse(
+            lib.verify_conversion(before, bad, fid="nord", show_details=False))
 
 
 class TestFixtureIntegrity(unittest.TestCase):
