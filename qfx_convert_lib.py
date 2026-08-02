@@ -42,8 +42,29 @@ FID_TARGETS = {
 }
 DEFAULT_FID = 'nord'
 
+# Per-institution online-balance sign flips, keyed to the --fid choice.
+#
+# Some institutions' Quicken Web Connect profiles import the online balance with
+# the opposite sign from what the source QFX carries, throwing reconciliation
+# off by 2x. For those, the converter pre-flips the balance sign so Quicken
+# displays it correctly. This is INDEPENDENT of the FID/INTU.BID rewrite and is
+# driven purely by the requested --fid. Each entry lists the balance element(s)
+# whose <BALAMT> sign should be toggled (pos<->neg); transaction <TRNAMT>
+# amounts are never touched.
+#
+# Empirically verified per institution:
+#   nord (71411): Quicken does NOT flip LEDGERBAL on import, so pre-flip it.
+#                 AVAILBAL left as-is (not observed to need flipping).
+#   chase (10898): balance behavior not yet verified -> no balance transform.
+#   orig:          leave everything unchanged.
+FID_BALANCE_FLIPS = {
+    'nord':  ('LEDGERBAL',),
+    'chase': (),
+    'orig':  (),
+}
+
 # Version stamped into the embedded marker.
-TOOL_VERSION = '1.1'
+TOOL_VERSION = '1.2'
 
 # Matches the embedded provenance marker and captures the requested fid.
 # (fid is always written as the first attribute, so this stays simple/robust.)
@@ -125,7 +146,14 @@ def extract_key_elements(qfx_content):
     # Count transactions
     transactions = re.findall(r'<STMTTRN>', qfx_content)
     elements['transaction_count'] = len(transactions)
-    
+
+    # Extract online balances (LEDGERBAL/AVAILBAL). Stored as floats so the
+    # verifier can check sign-flip vs. preservation per institution; None when
+    # the element is absent. Optional whitespace before <BALAMT> is tolerated.
+    for tag in ('LEDGERBAL', 'AVAILBAL'):
+        m = re.search(r'<' + tag + r'>\s*<BALAMT>(-?[\d.]+)</BALAMT>', qfx_content)
+        elements[tag] = float(m.group(1)) if m else None
+
     return elements
 
 
@@ -163,13 +191,32 @@ def verify_conversion(original_content, converted_content, fid=DEFAULT_FID, show
                 amounts_preserved = False
                 break
 
+    # Check online balances against the per-institution flip policy: elements
+    # listed in FID_BALANCE_FLIPS[fid] must have their sign toggled (magnitude
+    # preserved); every other balance must be unchanged. Absent elements are
+    # skipped rather than failed.
+    flip_tags = FID_BALANCE_FLIPS.get(fid, ())
+    balances_ok = True
+    balance_details = []  # (tag, orig, conv, should_flip, ok)
+    for tag in ('LEDGERBAL', 'AVAILBAL'):
+        o = orig_elements.get(tag)
+        c = conv_elements.get(tag)
+        if o is None or c is None:
+            continue
+        should_flip = tag in flip_tags
+        expected = -o if should_flip else o
+        ok = abs(c - expected) <= 0.01
+        balances_ok = balances_ok and ok
+        balance_details.append((tag, o, c, should_flip, ok))
+
     # Marker consistency: if the file records a requested fid, it must match the
     # fid we are verifying against. An absent marker is not itself a failure
     # (older files, or files produced with --no-marker).
     marker_fid = read_marker(converted_content)
     marker_ok = (marker_fid is None) or (marker_fid == fid)
 
-    success = fid_ok and intu_ok and count_same and amounts_preserved and marker_ok
+    success = (fid_ok and intu_ok and count_same and amounts_preserved
+               and balances_ok and marker_ok)
 
     if show_details:
         marker_display = marker_fid if marker_fid is not None else '(none)'
@@ -182,6 +229,11 @@ def verify_conversion(original_content, converted_content, fid=DEFAULT_FID, show
         print(f"INTU.BID:            {'✓' if intu_ok else '✗'} ({orig_elements['INTU.BID']} → {conv_elements['INTU.BID']})")
         print(f"Transaction Count:   {'✓' if count_same else '✗'} ({orig_elements['transaction_count']} transactions)")
         print(f"Amounts Preserved:   {'✓' if amounts_preserved else '✗'}")
+        if balance_details:
+            print(f"Balances:            {'✓' if balances_ok else '✗'}")
+            for tag, o, c, should_flip, ok in balance_details:
+                action = 'flip' if should_flip else 'keep'
+                print(f"  {tag:<10} {'✓' if ok else '✗'} ({o:>11.2f} → {c:>11.2f}, {action})")
         print(f"\nOverall Status:      {'✓ SUCCESS' if success else '✗ FAILED'}")
 
         if orig_elements['amounts']:
@@ -193,6 +245,32 @@ def verify_conversion(original_content, converted_content, fid=DEFAULT_FID, show
     return success
 
 
+def _toggle_balamt_sign(match):
+    """Toggle the leading +/- on a captured <BALAMT> value, preserving digits.
+
+    Groups: (open_tags, sign, digits, close_tag). A present '-' is removed
+    (neg -> pos); an absent sign becomes '-' (pos -> neg).
+    """
+    open_tags, sign, digits, close_tag = match.groups()
+    new_sign = '' if sign else '-'
+    return f'{open_tags}{new_sign}{digits}{close_tag}'
+
+
+def flip_balance_signs(content, tags):
+    """Toggle the sign of <BALAMT> for each named balance element in `tags`.
+
+    `tags` is an iterable of balance element names (e.g. ('LEDGERBAL',)). Only
+    the listed elements are touched, matched by their own opening tag, so
+    LEDGERBAL and AVAILBAL are handled independently and transaction <TRNAMT>
+    amounts are never affected. Optional whitespace between the balance tag and
+    its <BALAMT> child is tolerated.
+    """
+    for tag in tags:
+        pattern = r'(<' + re.escape(tag) + r'>\s*<BALAMT>)(-?)([\d.]+)(</BALAMT>)'
+        content = re.sub(pattern, _toggle_balamt_sign, content)
+    return content
+
+
 def convert_qfx(input_content, fid=DEFAULT_FID, write_marker=True):
     """Apply conversion rules to QFX content.
 
@@ -200,6 +278,10 @@ def convert_qfx(input_content, fid=DEFAULT_FID, write_marker=True):
       nord  -> 71411 (Nordstrom Web Connect, default)
       chase -> 10898 (Chase Web Connect)
       orig  -> leave FID/INTU.BID unchanged
+
+    The --fid choice also drives any online-balance sign flip declared in
+    FID_BALANCE_FLIPS (e.g. nord flips LEDGERBAL). Transaction <TRNAMT> amounts
+    are always preserved.
 
     When write_marker is True, a QFX-CONVERT comment recording the requested
     fid is embedded just after <OFX> for the verifier to read.
@@ -215,7 +297,15 @@ def convert_qfx(input_content, fid=DEFAULT_FID, write_marker=True):
         converted = re.sub(r'<FID>\d+</FID>', f'<FID>{target_id}</FID>', converted)
         converted = re.sub(r'<INTU\.BID>\d+</INTU\.BID>', f'<INTU.BID>{target_id}</INTU.BID>', converted)
 
-    # Rule 2: Record the requested fid choice as a marker comment.
+    # Rule 2: Flip online-balance sign(s) for institutions whose Quicken Web
+    # Connect profile imports the balance with the wrong sign. Keyed to the
+    # requested --fid via FID_BALANCE_FLIPS; a no-op when the list is empty
+    # (e.g. chase, orig). Independent of the id rewrite above.
+    flip_tags = FID_BALANCE_FLIPS.get(fid, ())
+    if flip_tags:
+        converted = flip_balance_signs(converted, flip_tags)
+
+    # Rule 3: Record the requested fid choice as a marker comment.
     # Always strip any prior marker first so re-conversions don't stack them;
     # only re-embed when write_marker is True.
     converted = strip_marker(converted)
